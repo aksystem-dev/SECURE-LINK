@@ -1,0 +1,40 @@
+﻿@inherits LayoutComponentBase
+
+<PageTitle>SecureLink.Web</PageTitle>
+
+<Animate Animation="Animations.ZoomIn" Duration="TimeSpan.FromSeconds(1)" Delay="TimeSpan.FromSeconds(1)">
+<div class="page">
+@*     <div class="sidebar">
+        <NavMenu />
+    </div>
+ *@
+    <main>
+        <header class="text-dark text-center">
+            <div class="mt-4">
+                <img src="@imageSource" width="80" height="80" alt="LOGO">
+            </div>
+        </header>
+       
+        <article class="content px-4">
+            @Body
+        </article>
+        <footer class="text-dark text-center">
+            <div class="m-2">
+                &copy 2025
+            </div>
+        </footer>
+    </main>
+</div>
+</Animate>
+
+
+@code {
+    private string? imageSource;
+
+    private void ShowImage() => imageSource = $"images/logo.png";
+    
+    protected override async Task OnInitializedAsync()
+    {
+        ShowImage();
+    }
+}

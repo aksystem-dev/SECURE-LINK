@@ -1,0 +1,104 @@
+﻿.page-background {
+    background: rgba(0, 0, 0, 0.03);
+    /*background: linear-gradient(90deg, rgba(2,0,36,1) 0%, rgba(9,9,121,1) 35%, rgba(0,212,255,1) 100%);*/
+}
+
+body {
+    font-family: 'Roboto', sans-serif;
+}
+
+.cards {
+    margin: 0 auto;
+    text-align: center;
+    display: -webkit-flex;
+    display: flex;
+    border-radius: 10px;
+    -webkit-justify-content: center;
+    justify-content: center;
+    -webkit-flex-wrap: wrap;
+    flex-wrap: wrap;
+    margin-top: 15px;
+    padding: 1.5%;
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    */ box-sizing: border-box;
+/*    box-shadow: 0 1rem 3rem rgba(32, 88, 136, 1) !important;*/
+    box-shadow: 0 1rem 3rem rgba(255, 255, 255, 0.5) !important;
+}
+
+.cards:hover {
+    box-shadow: 0 4px 10px rgba(0,0,0,0.16), 0 4px 10px rgba(0,0,0,0.23);
+}
+
+.shadow-lg {
+    box-shadow: 0 1rem 3rem rgba(0, 0, 0, .5) !important;
+}
+
+.outline {
+    background-color: transparent;
+/*    color: inherit;*/
+    transition: all .25s;
+}
+
+
+/* CONFIRM BUTTON */
+.btn-success.outline {
+    color: #5cb85c;
+}
+
+.btn-success.outline:hover {
+    color: white !important;
+    background-color: #5cb85c !important;
+}
+
+.btn-success.outline:focus {
+    background-color: transparent;
+    color: #5cb85c;
+}
+
+
+/* REJECT BUTTON */
+.btn-danger.outline {
+    color: #d9534f;
+}
+
+.btn-danger.outline:hover {
+    color: white !important;
+    background-color: #d9534f !important;
+}
+
+    .btn-danger.outline:focus {
+        background-color: transparent;
+        color: #d9534f;
+    }
+
+/* OTHER ACTION BUTTON */
+.btn-primary.outline {
+    color: #0275d8;
+    background-color: transparent;
+}
+
+.btn-primary.outline:hover {
+    color: white !important;
+    background-color: #0275d8;
+}
+
+/* COMMENT BUTTON */
+
+.btn-warning.outline {
+    color: #ffc107;
+}
+
+.btn-warning.outline:active {
+    background-color: white !important;
+}
+
+.btn-warning.outline:hover {
+    color: white !important;
+    background-color: #ffc107 !important;
+}
+
+.btn-warning.outline:focus {
+    background-color: transparent;
+    color: #ffc107;
+}

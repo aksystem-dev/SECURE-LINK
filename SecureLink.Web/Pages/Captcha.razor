@@ -1,0 +1,117 @@
+﻿@page "/captcha"
+@using Microsoft.AspNetCore.Components
+@using SecureLink.Web.Services
+@using BlazorAnimate
+@using Microsoft.AspNetCore.WebUtilities
+@using Microsoft.Extensions.Primitives
+@inject CaptchaService CaptchaService
+@inject NavigationManager Navigation
+@inject IHttpContextAccessor HttpContextAccessor
+@inject CaptchaRateLimiterService CaptchaRateLimiter
+@inject ILogger<Index> Logger
+
+@code {
+    [Parameter, SupplyParameterFromQuery(Name = "key")]
+    public string EncryptedKey { get; set; }
+
+    [Parameter, SupplyParameterFromQuery(Name = "ip")]
+    public string ClientIpFromURL { get; set; }
+
+    [CascadingParameter]
+    public string ClientIp { get; set; }
+
+    private string captchaText = string.Empty;
+    private string captchaImageUrl = string.Empty;
+    private string userInput = string.Empty;
+    private string message = string.Empty;
+    private string alertCssClass = "alert-success";
+    private bool _visible = false;
+
+    protected override void OnInitialized()
+    {
+        Logger.LogInformation("Captcha component initialized!");
+
+        ClientIp = !string.IsNullOrEmpty(ClientIpFromURL) ? ClientIpFromURL :
+           !string.IsNullOrEmpty(ClientIp) ? ClientIp :
+           HttpContextAccessor.HttpContext?.Request.Headers["X-Forwarded-For"].ToString() ??
+           HttpContextAccessor.HttpContext?.Connection.RemoteIpAddress?.ToString() ?? "Unknown IP";
+
+        Logger.LogInformation("Client IP detected: {ClientIp}", ClientIp);
+        GenerateCaptcha();
+    }
+
+    private void GenerateCaptcha()
+    {
+        Logger.LogInformation("GenerateCaptcha() called");
+        (byte[] imageBytes, string text) = CaptchaService.GenerateCaptcha();
+        captchaText = text;
+        captchaImageUrl = $"data:image/png;base64,{Convert.ToBase64String(imageBytes)}";
+        StateHasChanged();
+    }
+
+    private void VerifyCaptcha()
+    {
+        Logger.LogInformation($"VerifyCaptcha() called, user input: {userInput}, expected: {captchaText}");
+
+        if (userInput.Equals(captchaText, StringComparison.OrdinalIgnoreCase))
+        {
+            alertCssClass = "alert-success";
+            message = "Ověření úspěšné!";
+            _visible = true;
+            Logger.LogInformation("VerifyCaptcha() CAPTCHA passed!");
+
+            CaptchaRateLimiter.ResetAttempts(ClientIp);
+
+            if (!string.IsNullOrEmpty(EncryptedKey))
+            {
+                Logger.LogInformation("Redirecting to Index page with key {EncryptedKey}", EncryptedKey);
+                Navigation.NavigateTo($"/?key={Uri.EscapeDataString(EncryptedKey)}", forceLoad: true);
+            }
+            else
+            {
+                Logger.LogInformation("Redirecting to Index without key");
+                Navigation.NavigateTo("/", forceLoad: true);
+            }
+        }
+        else
+        {
+            Logger.LogWarning($"VerifyCaptcha() verification failed, entered: {userInput}, expected: {captchaText}");
+            alertCssClass = "alert-warning";
+            message = "Chybný kód. Zkuste to znovu.";
+            _visible = true;
+            userInput = string.Empty;
+            GenerateCaptcha();
+        }
+        StateHasChanged();
+    }
+}
+
+<div class="d-flex justify-content-center">
+    <div class="card shadow-lg mb-4 border-dark text-center p-3 mx-3 bg-white rounded-3 col-xxl-4 col-xl-4 col-lg-4 col-md-6 col-sm-12">
+        <h3>Ověření CAPTCHA</h3>
+
+        @if (!string.IsNullOrEmpty(captchaImageUrl))
+        {
+            <div class="border border-2 border-dark col px-2 py-1 my-1">
+                <img src="@captchaImageUrl" class="rounded mx-auto d-block" alt="CAPTCHA" />
+            </div>
+        }
+
+        <button class="btn btn-warning col px-2 py-1 my-1 border border-1 border-dark" @onclick="GenerateCaptcha">
+            Generovat novou CAPTCHA
+        </button>
+
+        <input type="text" class="form-control col text-center px-2 py-1 my-1 border border-3 border-dark" placeholder="Zadejte kód" @bind="userInput" />
+
+        <button class="btn btn-success col px-2 py-1 my-1 border border-1 border-dark" @onclick="VerifyCaptcha">
+            Ověřit
+        </button>
+
+        @if (!string.IsNullOrEmpty(message) && _visible)
+        {
+            <div class="alert @alertCssClass my-2" role="alert">
+                @message
+            </div>
+        }
+    </div>
+</div>

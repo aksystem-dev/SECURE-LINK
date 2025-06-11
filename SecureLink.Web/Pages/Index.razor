@@ -1,0 +1,173 @@
+﻿@page "/"
+@using System.Web
+@using SecureLink.Web.Services
+@using SecureLink.Shared.Models
+@using Microsoft.AspNetCore.WebUtilities
+@using Microsoft.Extensions.Primitives
+@inject NavigationManager Navigation
+@inject SecureLinkService secureLinkService
+@inject IHttpContextAccessor HttpContextAccessor
+@inject CaptchaRateLimiterService CaptchaRateLimiter
+@inject ILogger<Index> Logger
+@inherits LayoutComponentBase
+
+<PageTitle>Index</PageTitle>
+
+@if (string.IsNullOrEmpty(encryptedKey))
+{
+    <div class="alert alert-danger" role="alert">
+        Neplatný odkaz: parametr "key" není zadán.
+    </div>
+}
+else if (secureLinkData == null)
+{
+    <p>Načítám...</p>
+}
+else if (!secureLinkData.IsValid)
+{
+    <div class="alert alert-danger" role="alert">
+        @((MarkupString)secureLinkData.Message)
+    </div>
+}
+else
+{
+    <div class="d-flex justify-content-center">
+        <div class="card shadow-lg mb-4 border-dark text-center p-3 mx-3 bg-white rounded-3 col-xxl-6 col-xl-6 col-lg-6 col-md-9 col-sm-12">
+            <div class="card-header"><strong>Zpráva</strong></div>
+            <div class="card-body">
+                @if (!string.IsNullOrEmpty(resultMessage))
+                {
+                    <div class="alert @alertType" role="alert">
+                        @((MarkupString)resultMessage)
+                    </div>
+                }
+                <div class="d-grid gap-2 d-md-block mt-5 text-center">
+                    @foreach (var act in secureLinkData.Actions)
+                    {
+                        <button disabled="@buttonsDisabled"
+                                class="btn @(act.Action == ActionType.Confirm ? "btn-success" : act.Action == ActionType.Reject ? "btn-danger" : "btn-primary") col-xxl-4 col-xl-4 col-lg-4 col-md-6 mx-2 my-1 outline"
+                                @onclick="() => ConfirmAction(act.Action)">
+                            <strong>@act.ButtonText</strong>
+                        </button>
+                    }
+                    @if (secureLinkData.ShowCommentBox)
+                    {
+                        <button disabled="@buttonsDisabled"
+                                class="btn btn-warning col-xxl-4 col-xl-4 col-lg-4 col-md-6 mx-2 my-1 outline"
+                                @onclick="ShowTextArea">
+                            <strong>Přidat komentář</strong>
+                        </button>
+                    }
+                </div>
+                <textarea hidden="@hideTextArea" @bind="userComment"
+                          class="form-control mt-2 border border-dark" style="max-height: 100px;"></textarea>
+            </div>
+            <div class="card-footer"></div>
+        </div>
+    </div>
+}
+
+@code {
+
+    [CascadingParameter]
+    public string ClientIp { get; set; }
+
+    private string? userComment = string.Empty;
+    private bool hideTextArea = true;
+
+    private string encryptedKey;
+    private string resultMessage;
+    private string alertType = "alert-info";
+    private bool buttonsDisabled = false;
+    private string clientIpAddress;
+    private SecureLinkData secureLinkData;
+
+    private bool hasRendered = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || hasRendered)
+            return;
+
+        hasRendered = true;
+
+        try
+        {
+            if (string.IsNullOrEmpty(ClientIp))
+            {
+                clientIpAddress = HttpContextAccessor.HttpContext?.Connection?.RemoteIpAddress?.ToString() ?? "Unknown IP";
+                if (HttpContextAccessor.HttpContext?.Request.Headers.ContainsKey("X-Forwarded-For") ?? false)
+                {
+                    clientIpAddress = HttpContextAccessor.HttpContext.Request.Headers["X-Forwarded-For"].ToString();
+                }
+                Logger.LogInformation("Client IP from httpContext: {ClientIpAddress}", clientIpAddress);
+            }
+            else
+            {
+                clientIpAddress = ClientIp;
+                Logger.LogInformation("Client IP from middleware: {ClientIpAddress}", ClientIp);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error fetching client IP.");
+            clientIpAddress = "Unknown IP";
+        }
+
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("key", out StringValues keyValues))
+        {
+            encryptedKey = keyValues.FirstOrDefault();
+        }
+
+        if (string.IsNullOrWhiteSpace(encryptedKey))
+        {
+            resultMessage = "Parametr 'encryptedKey' není zadán nebo je prázdný.";
+            StateHasChanged();
+            return;
+        }
+
+        CaptchaRateLimiter.RecordAttempt(clientIpAddress);
+        if (CaptchaRateLimiter.ShouldRequireCaptcha(clientIpAddress))
+        {
+            Logger.LogInformation("Redirecting to captcha page - captcha required");
+            var redirectUrl = $"/captcha?key={Uri.EscapeDataString(encryptedKey)}&ip={Uri.EscapeDataString(clientIpAddress)}";
+            Navigation.NavigateTo(redirectUrl, forceLoad: true);
+            return;
+        }
+
+        try
+        {
+            secureLinkData = await secureLinkService.ValidateLinkAsync(encryptedKey, clientIpAddress);
+            if (secureLinkData != null)
+            {
+                resultMessage = secureLinkData.Message;
+            }
+            else
+            {
+                resultMessage = "Ověření odkazu selhalo.";
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Chyba během ověřování odkazu.");
+            resultMessage = "Došlo k chybě při ověřování odkazu.";
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task ConfirmAction(ActionType action)
+    {
+        var result = await secureLinkService.ConfirmActionAsync(encryptedKey ?? "", action, clientIpAddress, userComment);
+        resultMessage = result.Message;
+        alertType = result.Success ? "alert-success" : "alert-danger";
+
+        buttonsDisabled = true;
+    }
+
+    private void ShowTextArea()
+    {
+        hideTextArea = !hideTextArea;
+    }
+}
