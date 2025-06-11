@@ -5,7 +5,6 @@
 - Windows Server s IIS (včetně **ASP.NET Core Hosting Bundle**)
 - .NET 8 SDK
 - Microsoft SQL Server
-- SMTP server (volitelně, pro zasílání e-mailů)
 - HTTPS certifikát (pokud API a WebApp běží na oddělených serverech)
 
 ## 📦 Komponenty systému
@@ -19,7 +18,7 @@
 ## 🔧 Instalace databáze
 
 1. Otevřete SQL Server Management Studio.
-2. Spusťte SQL skript `SecureLink_Database.sql`, který vytvoří potřebné tabulky:
+2. Spusťte SQL skript `DB_Create.sql` (SecureLink.API - Data - Scripts - DB_Create.sql), který vytvoří potřebné tabulky:
    - `SecureLinkSettings`, `ActionOptions`, `SecureLinkRequestsLog`, `Users`, ...
 3. Ujistěte se, že máte správně nastavenou connection string v `appsettings.json`:
 
@@ -65,12 +64,29 @@ Základní konfigurace obou aplikací (API i WebApp):
 }
 ```
 
+Konfiguraci je možné nastavit dle potřeby a to tak, že otevřete soubor appsettings.json v libovolném textovém editoru.
+
+Pro změnu connection string připojení najděte sekci "ConnectionStrings".
+
+Do této sekce přidejte potřebný connection string. Například:
+
+"ConnectionStrings": {
+  "DefaultConnection": "Data Source=CZC0155-AUTOB\\POHODA_SQL;Initial Catalog=SecureLink;Integrated Security=False;User ID=SecureLinkLogin;Password=ENC$Qb9d3Bl9T7tcvJxdOlzkk+t02E59V2XsZJE453/MJ87Q1aaXM/EKRCvMydxlP9y1;Trust Server Certificate=True",
+  "PohodaConnection": "Data Source=CZC0155-AUTOB\\POHODA_SQL;Initial Catalog=StwPh_17048052_2025;Integrated Security=False;User ID=SecureLinkLogin;Password=ENC$EZqqZKylC2WnKBRCJfnf/Pu9yHsHbuyFofnGicicrTWTf9PC79IAspIUPco2aVsX;Trust Server Certificate=True"
+}
+
+Tip: Pokud nechcete connection stringy přidávat ručně, můžete použít aplikaci ConfigEditor, který umožňuje jednoduše přidávat nové connection stringy, automaticky je zašifruje a umožní vám otestovat jejich správnost. 
+
+
 ## 🏗️ Build a publikace
 
 ```bash
 dotnet publish SecureLink.Api -c Release -o ./publish-api
 dotnet publish SecureLink.WebApp -c Release -o ./publish-web
 ```
+
+Případně manuálně za pomocí Visual Studia. 
+
 
 Nahrajte publikované soubory na server, např.:
 
@@ -122,18 +138,17 @@ Možné odpovědi:
 
 ## 🔄 Napojení na EmailSMSGate
 
-V aplikaci EmailSMSGate je nyní možné v nastavení pravidla přidat **unikátní identifikátor**.
+V hlavním nastavení aplikace EmailSMSGate najdete nově přidané tlačítko „Nastavení SecureLink“.
+Kliknutím na toto tlačítko se otevře formulář pro konfiguraci propojení se SecureLink API.
 
-### Jak to funguje:
+Na obrazovce vyplňte:
+Uživatelské jméno (pokud zadáte nové jméno, uživatel se automaticky vytvoří)
+Heslo uživatele
+Jméno databáze (musí přesně odpovídat názvu v sekci ConnectionStrings, např. „PohodaConnection“)
+API URL (adresa API získaná z nastavení IIS, např.: http://localhost:80/)
 
-- Identifikátor musí odpovídat názvu sloupce v SQL `SELECT` dotazu (např. `ID`, `CisloObjednavky`).
-- Měl by být unikátní.
-- Pokud je nastaven:
-  - SecureLink zkontroluje, zda odkaz s tímto ID již existuje.
-  - Pokud ano, nevrací nový, ale prodlouží platnost toho stávajícího.
-  - API vrátí tento existující odkaz.
-
-🎯 Tím se zlepší přehlednost v aplikaci a zabrání se vytváření duplicit.
+Následně je možné v nastavení pravidla přidat nastavení pro secureLink a generování odkazu.
+Pozor licence pro EmailSMSGate musí mít jako součást SecureLink
 
 ## 🛡️ Bezpečnost a provoz
 
@@ -149,11 +164,10 @@ V aplikaci EmailSMSGate je nyní možné v nastavení pravidla přidat **unikát
 |-------------|------|
 | **.NET 8** | Hlavní framework pro API i Blazor aplikaci |
 | **Blazor Server** | UI pro potvrzovací stránku |
-| **Entity Framework / Dapper** | Přístup k databázi (většinou Dapper pro výkonnost) |
+| **Dapper** | Přístup k databázi (Dapper pro výkonnost) |
 | **Serilog** | Logování do souborů a konzole |
 | **JWT** | Autorizace API požadavků |
 | **IIS** | Hostování publikovaných aplikací |
-| **SMTP (MailKit)** | Volitelně pro odesílání potvrzovacích e-mailů |
 
 ---
 
