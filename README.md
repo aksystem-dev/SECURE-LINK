@@ -5,7 +5,7 @@
 - Windows Server s IIS (včetně **ASP.NET Core Hosting Bundle**)
 - .NET 8 SDK
 - Microsoft SQL Server
-- HTTPS certifikát (pokud API a WebApp běží na oddělených serverech)
+- HTTPS certifikát + doména (pokud API a WebApp běží na oddělených serverech budou potřeba 2 certifikáty a oddělené domény pro každou aplikaci. V opačném případě může API komunikovat pouze po interní síti a není potřeba HTTPS certifikát ani doména)
 
 ## 📦 Komponenty systému
 
@@ -153,7 +153,7 @@ Pozor licence pro EmailSMSGate musí mít jako součást SecureLink
 ## 🛡️ Bezpečnost a provoz
 
 - Omez přístup k API pomocí IP whitelistu.
-- Využijte JWT autorizaci.
+- JWT autorizace.
 - Aktivujte přesměrování HTTP → HTTPS.
 - Sledujte Serilog logy v `logs/log-*.txt`.
 - Uživatelé a přihlašovací údaje v `AuthSettings` jsou šifrovány.
