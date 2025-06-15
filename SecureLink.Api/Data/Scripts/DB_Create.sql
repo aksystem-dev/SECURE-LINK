@@ -1,4 +1,4 @@
-﻿/****************************************************
+/****************************************************
  * Vytvoření databáze SecureLink a přidruženého loginu
  ****************************************************/
 
@@ -278,3 +278,84 @@ CREATE TABLE [dbo].[FailedValidations] (
 );
 GO
 
+
+-- Tabulka BlockedIPs: záznamy o zablokovaných IP adresách
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [dbo].[BlockedIPs](
+	[ID] [int] IDENTITY(1,1) NOT NULL,
+	[IPAddress] [nvarchar](45) NOT NULL,
+	[Blocked] [datetime] NOT NULL,
+	[BlockedUntil] [datetime] NOT NULL,
+ CONSTRAINT [PK_BlockedIPs] PRIMARY KEY CLUSTERED 
+(
+	[ID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+
+ALTER TABLE [dbo].[BlockedIPs] ADD  CONSTRAINT [DF_BlockedIPs_Blocked]  DEFAULT (getdate()) FOR [Blocked]
+GO
+
+-- Vytvoreni dat v tabulce UserTypes
+INSERT INTO [dbo].[UserTypes] ([Name], [Description])
+VALUES 
+  ('Admin', 'Full access to the system'),
+  ('Guest', 'Limited access'),
+  ('Reader', 'Read-only access'),
+  ('Writer', 'Write and read access');
+GO
+
+-- Vložení uživatele do tabulky Users => heslo: 57EoB8Vwrn4lewRoxcil9BP4yACLek43HSEc0O
+  insert into Users (Username, PasswordHash, UserType, CreatedAt, DatabaseName)
+  values ('EmailSMSGate', '$2a$11$N0LQB/FDkBSubBAA0alX6ehs0R1IhCB9wE81d.4TWvc.b8KshQg9q', 1, GETDATE(), 'DefaultConnection')
+GO
+
+-- Optional: Audit DB uživatele pro SecureLink
+
+USE [SecureLink]
+GO
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [dbo].[SecureUserAuditLog](
+	[Id] [int] IDENTITY(1,1) NOT NULL,
+	[EventTime] [datetime] NULL,
+	[EventData] [xml] NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+
+ALTER TABLE [dbo].[SecureUserAuditLog] ADD  DEFAULT (getdate()) FOR [EventTime]
+GO
+
+USE [master];
+GO
+
+-- Vytvoření nového triggeru
+CREATE TRIGGER trg_LogAlterLogin_SecureLink
+ON ALL SERVER
+FOR ALTER_LOGIN
+AS
+BEGIN
+    DECLARE @login NVARCHAR(255);
+    SET @login = EVENTDATA().value('(/EVENT_INSTANCE/ObjectName)[1]', 'NVARCHAR(255)');
+
+    IF @login = 'SecureLinkLogin'
+    BEGIN
+        INSERT INTO [SecureLink].[dbo].[SecureUserAuditLog] (EventData)
+        VALUES (EVENTDATA());
+    END
+END;
+GO
