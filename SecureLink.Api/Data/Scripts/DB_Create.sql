@@ -196,17 +196,21 @@ SET QUOTED_IDENTIFIER ON
 GO
 
 CREATE TABLE [dbo].[SecureLinkSettings](
-    [Id] [int] IDENTITY(1,1) NOT NULL,
-    [EncryptedKey] [nvarchar](256) NOT NULL,
-    [Message] [nvarchar](500) NOT NULL,
-    [ExpirationDate] [datetime] NOT NULL,
-    [ShowCommentBox] [bit] NOT NULL DEFAULT (0),
-    [Processed] [bit] NOT NULL DEFAULT (0),
-    [DatabaseName] [nvarchar](200) NOT NULL,
+    [Id]              INT             IDENTITY(1,1) NOT NULL,
+    [EncryptedKey]    NVARCHAR(256)   NOT NULL,
+    [Message]         NVARCHAR(500)   NOT NULL,
+    [ExpirationDate]  DATETIME        NOT NULL,
+    [ShowCommentBox]  BIT             NOT NULL DEFAULT ((0)),
+    [Processed]       BIT             NOT NULL DEFAULT ((0)),
+    [DatabaseName]    NVARCHAR(200)   NOT NULL,
+    [LinkIdentifier]  NVARCHAR(256)   NULL,
+    [CreatedDate]     DATETIME        NULL
+        CONSTRAINT DF_SecureLinkSettings_CreatedDate DEFAULT (GETDATE()),
     CONSTRAINT [PK_SecureLinkSettings] PRIMARY KEY CLUSTERED 
     (
         [Id] ASC
-    ) WITH (
+    ) WITH 
+    (
         PAD_INDEX = OFF, 
         STATISTICS_NORECOMPUTE = OFF,
         IGNORE_DUP_KEY = OFF, 
@@ -214,9 +218,8 @@ CREATE TABLE [dbo].[SecureLinkSettings](
         ALLOW_PAGE_LOCKS = ON, 
         OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF
     ) ON [PRIMARY]
-) ON [PRIMARY]
+) ON [PRIMARY];
 GO
-
 
 -- Tabulka ActionOptions: definice akcí (tlačítek) v rámci odkazu
 SET ANSI_NULLS ON
@@ -313,6 +316,13 @@ GO
 -- Vložení uživatele do tabulky Users => heslo: 57EoB8Vwrn4lewRoxcil9BP4yACLek43HSEc0O
   insert into Users (Username, PasswordHash, UserType, CreatedAt, DatabaseName)
   values ('EmailSMSGate', '$2a$11$N0LQB/FDkBSubBAA0alX6ehs0R1IhCB9wE81d.4TWvc.b8KshQg9q', 1, GETDATE(), 'DefaultConnection')
+GO
+
+-- Vložení uživatele do tabulky Users => heslo: gvIn3LbzUzt5LP0SLoYEGtcbBALWP
+-- Použití pro SecureLink web
+-- Encryptované heslo: ENC$ePGS6tJQOq3wdVkHZ6Wbmq07SyryOCs7ilmbwsEWQlOhw/o90yfgrG0K9dap4xLF
+  insert into Users (Username, PasswordHash, UserType, CreatedAt, DatabaseName)
+  values ('SecureLinkWeb', '$2a$11$kp1jc8zfILfqETBVGjND6OfLhp6qQYC1hPMKdPrtn5Bctu.iBVdwi', 1, GETDATE(), 'DefaultConnection')
 GO
 
 -- Optional: Audit DB uživatele pro SecureLink
